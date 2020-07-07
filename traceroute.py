@@ -74,19 +74,34 @@ class Traceroute(object):
                 while not stop:
                     packet = self.__build_pack()
                     self.sock_dgram.setsockopt(socket.IPPROTO_IP, socket.IP_TTL, struct.pack('I', self.ttl))
-                    for i in range(3):
-                        t1 = time.time()
-                        self.sock_dgram.sendto(packet, (host_addr,0))
-                        try:
+                    try:
+                        for i in range(3):
+                            t1 = time.time()
+                            self.sock_dgram.sendto(packet, (host_addr,0))
                             icmp_msg, addr = self.sock_raw.recvfrom(1024)
                             t2 = time.time()
                             self.rtt[i]= "%.4f" % ((t2-t1)*1000)
                             self.dest[i]= addr[0]
+                        if self.dest[0] == self.dest[1] and self.dest[1] == self.dest[2]:
                             trace = "TTL = {:<3} {} ({}) {} ms  {} ms  {} ms".format(self.ttl,socket.gethostbyaddr(self.dest[0])[0],self.dest[0],self.rtt[0],self.rtt[1],self.rtt[2])
-                        except socket.timeout:
-                            trace = "TTL = {:<3} ***".format(self.ttl)
-                        except socket.herror:
-                            trace = "TTL = {:<3} {} ({}) {} ms  {} ms  {} ms".format(self.ttl,self.dest[0],self.dest[0],self.rtt[0],self.rtt[1],self.rtt[2])
+                        elif  self.dest[0] != self.dest[1] and self.dest[1] != self.dest[2]:
+                             trace = "TTL = {:<3} {} ({}) {} ms  {} ({}) {} ms  {} ({}){} ms".format(self.ttl,socket.gethostbyaddr(self.dest[0])[0],
+                                                                                                     self.dest[0],self.rtt[0],socket.gethostbyaddr(self.dest[1])[0],
+                                                                                                     self.dest[1],self.rtt[1],socket.gethostbyaddr(self.dest[2])[0],
+                                                                                                     self.dest[2],self.rtt[2])
+                        elif self.dest[0] == self.dest[1] and self.dest[1] != self.dest[2]:
+                            trace = "TTL = {:<3} {} ({}) {} ms  {} ms  {} ({}){} ms".format(self.ttl,socket.gethostbyaddr(self.dest[0])[0],
+                                                                                                     self.dest[0],self.rtt[0],self.rtt[1],socket.gethostbyaddr(self.dest[2])[0],
+                                                                                                     self.dest[2],self.rtt[2])
+                        elif self.dest[0] != self.dest[1] and self.dest[1] == self.dest[2]:
+                            trace = "TTL = {:<3} {} ({}) {} ms  {} ({}){} ms {} ms".format(self.ttl,socket.gethostbyaddr(self.dest[0])[0],
+                                                                                                     self.dest[0],self.rtt[0],self.rtt[1],socket.gethostbyaddr(self.dest[1])[0],
+                                                                                                     self.dest[1],self.rtt[2])
+
+                    except socket.timeout:
+                        trace = "TTL = {:<3} ***".format(self.ttl)
+                    except socket.herror:
+                        trace = "TTL = {:<3} {} ({}) {} ms  {} ms  {} ms".format(self.ttl,self.dest[0],self.dest[0],self.rtt[0],self.rtt[1],self.rtt[2])
                     print(trace)
                     self.ttl += 1
                     if self.dest[0] == host_addr or self.ttl > MAX_HOPS:
